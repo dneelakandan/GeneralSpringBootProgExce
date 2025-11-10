@@ -1,0 +1,61 @@
+trigger:
+- main  # or your default branch
+
+variables:
+  mavenPomFile: 'pom.xml'
+  artifactName: 'drop'
+  buildConfiguration: 'Release'
+
+stages:
+# ============================================================
+# 1️⃣ BUILD STAGE
+# ============================================================
+- stage: Build
+  displayName: "Build & Package"
+  jobs:
+  - job: BuildJob
+    displayName: "Build using Maven"
+    pool:
+      name: Default    # 🔹 Make sure your agent pool name matches
+    steps:
+    - checkout: self
+
+    - script: |
+        echo "🔧 Building Java project..."
+        java -version
+        mvn -version
+        mvn clean package -DskipTests
+      displayName: 'Build with Maven'
+
+    - task: PublishBuildArtifacts@1
+      displayName: "📦 Publish Build Artifacts"
+      inputs:
+        PathtoPublish: 'target'
+        ArtifactName: '$(artifactName)'
+        publishLocation: 'Container'
+
+# ============================================================
+# 2️⃣ DEV DEPLOYMENT STAGE
+# ============================================================
+- stage: Dev
+  displayName: "🚀 Deploy to Dev Environment"
+  dependsOn: Build
+  jobs:
+  - deployment: DevDeploy
+    displayName: "Deploy to Dev"
+    environment: "Dev"
+    pool:
+      name: Default
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: $(artifactName)
+
+          - script: |
+              echo "🌍 Deploying to Dev environment..."
+              echo "Listing artifact contents:"
+              ls -l $(Pipeline.Workspace)/$(artifactName)
+              echo "✅ Deployment completed for Dev"
+            displayName: "Deploy App to Dev"
