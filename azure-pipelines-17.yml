@@ -1,0 +1,31 @@
+trigger:
+- main   # or your branch name
+
+pool:
+  name: Default  # must match the pool name where your self-hosted agent is registered
+
+steps:
+# Step 1: Checkout source code
+- checkout: self
+
+# Step 2: Verify environment
+- script: |
+    echo "Java and Maven versions:"
+    java -version
+    mvn -version
+  displayName: 'Verify Java & Maven'
+
+# Step 3: Build project
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'   # path to your pom.xml
+    goals: 'clean package'
+  displayName: 'Build with Maven'
+
+# Step 4: Publish artifacts (optional)
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: 'target'   # adjust if output is elsewhere
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+  displayName: 'Publish build artifacts'
