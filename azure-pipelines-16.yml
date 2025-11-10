@@ -7,7 +7,7 @@ trigger:
 - development
 
 pool:
-  vmImage: ubuntu-latest
+  name: Default
 
 
 stages:
@@ -17,8 +17,8 @@ stages:
   - job: 'Build'
     displayName: 'Build job'
     pool:
-     name: Hackathon2
-     demands: mvn
+      name: Default
+      demands: mvn
     steps:
     - task: Maven@4
       inputs:
@@ -41,8 +41,8 @@ stages:
   jobs:
   - deployment: Deploy
     pool:
-     name: Hackathon2
-     demands: mvn
+      name: Default
+      demands: mvn
     environment: dev
     strategy:
       runOnce:
@@ -56,8 +56,8 @@ stages:
   jobs:
   - deployment: Deploy
     pool:
-     name: Hackathon2
-     demands: mvn
+      name: Default
+      demands: mvn
     environment: Test
     strategy:
       runOnce:
@@ -71,8 +71,8 @@ stages:
   jobs:
   - deployment: Deploy
     pool:
-     name: Hackathon2
-     demands: mvn
+      name: Default
+      demands: mvn
     environment: staging
     strategy:
       runOnce:
