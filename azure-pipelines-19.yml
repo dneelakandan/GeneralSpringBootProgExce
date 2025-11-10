@@ -1,0 +1,128 @@
+trigger:
+- main   # or your main branch
+
+pool:
+  name: Default   # your self-hosted agent pool
+
+variables:
+  mavenPomFile: 'pom.xml'
+  artifactName: 'drop'
+  buildConfiguration: 'Release'
+
+stages:
+# ============================================================
+# 1️⃣ BUILD STAGE
+# ============================================================
+- stage: Build
+  displayName: "Build & Package"
+  jobs:
+  - job: BuildJob
+    displayName: "Build using Maven"
+    steps:
+    - checkout: self
+
+    - script: |
+        echo "Building Java project..."
+        java -version
+        mvn -version
+        mvn clean package -DskipTests
+      displayName: 'Build with Maven'
+
+    - task: PublishBuildArtifacts@1
+      displayName: "Publish Build Artifacts"
+      inputs:
+        PathtoPublish: 'target'
+        ArtifactName: '$(artifactName)'
+        publishLocation: 'Container'
+
+# ============================================================
+# 2️⃣ DEV DEPLOYMENT STAGE
+# ============================================================
+- stage: Dev
+  displayName: "Deploy to Dev Environment"
+  dependsOn: Build
+  jobs:
+  - deployment: DevDeploy
+    displayName: "Deploy to Dev"
+    environment: "Dev"
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: $(artifactName)
+          - script: |
+              echo "Deploying to Dev environment..."
+              echo "Files in artifact:"
+              ls -l $(Pipeline.Workspace)/$(artifactName)
+              # Simulate deployment
+              echo "Deployment completed for Dev"
+            displayName: "Deploy App to Dev"
+
+# ============================================================
+# 3️⃣ TEST DEPLOYMENT STAGE
+# ============================================================
+- stage: Test
+  displayName: "Deploy to Test Environment"
+  dependsOn: Dev
+  jobs:
+  - deployment: TestDeploy
+    displayName: "Deploy to Test"
+    environment: "Test"
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: $(artifactName)
+          - script: |
+              echo "Running integration tests..."
+              # Place test automation scripts here
+              echo "Tests passed successfully!"
+            displayName: "Run Tests"
+
+# ============================================================
+# 4️⃣ STAGING DEPLOYMENT STAGE
+# ============================================================
+- stage: Staging
+  displayName: "Deploy to Staging Environment"
+  dependsOn: Test
+  jobs:
+  - deployment: StagingDeploy
+    displayName: "Deploy to Staging"
+    environment: "Staging"
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: $(artifactName)
+          - script: |
+              echo "Deploying to Staging environment..."
+              echo "Verifying smoke tests..."
+              echo "Staging deployment successful!"
+            displayName: "Deploy App to Staging"
+
+# ============================================================
+# 5️⃣ PRODUCTION DEPLOYMENT STAGE
+# ============================================================
+- stage: Prod
+  displayName: "Deploy to Production"
+  dependsOn: Staging
+  condition: succeeded()
+  #approval:
+    # You can define approvals via Azure DevOps Environments UI
+  jobs:
+  - deployment: ProdDeploy
+    displayName: "Deploy to Production"
+    environment: "Prod"
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: $(artifactName)
+          - script: |
+              echo "Deploying to Production..."
+              echo "Production deployment successful!"
+            displayName: "Deploy App to Prod"
